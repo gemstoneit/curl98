@@ -598,7 +598,7 @@ if test "$curl_cv_native_windows" = "yes"; then
     AC_MSG_RESULT([yes])
   ],[
     AC_MSG_RESULT([no])
-    AC_MSG_ERROR([Building for Windows Vista or newer is required.])
+    AC_MSG_WARN([Windows legacy target override enabled for Win98 feasibility build])
   ])
 fi
 

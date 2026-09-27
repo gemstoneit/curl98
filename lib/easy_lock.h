@@ -29,11 +29,27 @@
 
 #ifdef _WIN32
 
+#ifdef CURL_WIN98_LEGACY_TARGET
+#define curl_simple_lock      LONG
+#define CURL_SIMPLE_LOCK_INIT 0
+
+static CURL_INLINE void curl_simple_lock_lock(curl_simple_lock *lock)
+{
+  while(InterlockedExchange(lock, 1))
+    Sleep(0);
+}
+
+static CURL_INLINE void curl_simple_lock_unlock(curl_simple_lock *lock)
+{
+  InterlockedExchange(lock, 0);
+}
+#else
 #define curl_simple_lock      SRWLOCK
 #define CURL_SIMPLE_LOCK_INIT SRWLOCK_INIT
 
 #define curl_simple_lock_lock(m)   AcquireSRWLockExclusive(m)
 #define curl_simple_lock_unlock(m) ReleaseSRWLockExclusive(m)
+#endif
 
 #elif defined(HAVE_ATOMIC) && defined(HAVE_STDATOMIC_H)
 #include <stdatomic.h>

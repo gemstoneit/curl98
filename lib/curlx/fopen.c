@@ -106,6 +106,11 @@ WINBASEAPI DWORD WINAPI GetFullPathNameW(LPCWSTR, DWORD, LPWSTR, LPWSTR *);
  */
 static bool fix_excessive_path(const TCHAR *in, TCHAR **out)
 {
+#ifdef CURL_WIN98_LEGACY_TARGET
+  (void)in;
+  *out = NULL;
+  return false;
+#else
   size_t needed, count;
   const wchar_t *in_w;
   wchar_t *fbuf = NULL;
@@ -248,6 +253,7 @@ cleanup:
   CURLX_FREE(obuf);
 #endif
   return *out ? true : false;
+#endif
 }
 
 #ifndef CURL_WINDOWS_UWP
@@ -367,7 +373,7 @@ FILE *curlx_win32_fopen(const char *filename, const char *mode)
   return file;
 }
 
-#if defined(__MINGW32__) && (__MINGW64_VERSION_MAJOR < 5)
+#if defined(__MINGW32__) && (__MINGW64_VERSION_MAJOR < 5) && !defined(CURL_WIN98_LEGACY_TARGET)
 _CRTIMP errno_t __cdecl freopen_s(FILE **file, const char *filename,
                                   const char *mode, FILE *stream);
 #endif
@@ -398,7 +404,11 @@ FILE *curlx_win32_freopen(const char *filename, const char *mode, FILE *fp)
     target = fixed;
   else
     target = filename;
+#ifdef CURL_WIN98_LEGACY_TARGET
+  file = freopen(target, mode, fp);
+#else
   errno = freopen_s(&file, target, mode, fp);
+#endif
 #endif
 
   CURLX_FREE(fixed);

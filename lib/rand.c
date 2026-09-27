@@ -34,6 +34,30 @@
 #include "escape.h"
 
 #ifdef _WIN32
+#ifdef CURL_WIN98_LEGACY_TARGET
+#include <wincrypt.h>
+
+CURLcode Curl_win32_random(unsigned char *entropy, size_t length)
+{
+  HCRYPTPROV provider = 0;
+  BOOL ok;
+
+  memset(entropy, 0, length);
+
+  if(length > (size_t)0xffffffffUL)
+    return CURLE_FAILED_INIT;
+
+  ok = CryptAcquireContextA(&provider, NULL, NULL, PROV_RSA_FULL,
+                            CRYPT_VERIFYCONTEXT);
+  if(!ok)
+    return CURLE_FAILED_INIT;
+
+  ok = CryptGenRandom(provider, (DWORD)length, entropy);
+  CryptReleaseContext(provider, 0);
+
+  return ok ? CURLE_OK : CURLE_FAILED_INIT;
+}
+#else
 #include <bcrypt.h>
 #ifndef STATUS_SUCCESS
 #define STATUS_SUCCESS ((NTSTATUS)0x00000000L)
@@ -49,6 +73,7 @@ CURLcode Curl_win32_random(unsigned char *entropy, size_t length)
 
   return CURLE_OK;
 }
+#endif
 #endif
 
 #ifndef USE_SSL

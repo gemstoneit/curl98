@@ -188,6 +188,37 @@ CURLcode Curl_cond_timedwait(pthread_cond_t *c, pthread_mutex_t *m,
 
 #elif defined(_WIN32)
 
+#ifdef CURL_WIN98_LEGACY_TARGET
+
+void Curl_cond_signal(HANDLE *c)
+{
+  SetEvent(*c);
+}
+
+void Curl_cond_wait(HANDLE *c, CRITICAL_SECTION *m)
+{
+  LeaveCriticalSection(m);
+  WaitForSingleObject(*c, INFINITE);
+  EnterCriticalSection(m);
+}
+
+CURLcode Curl_cond_timedwait(HANDLE *c, CRITICAL_SECTION *m,
+                             uint32_t timeout_ms)
+{
+  DWORD wait_result;
+
+  LeaveCriticalSection(m);
+  wait_result = WaitForSingleObject(*c, (DWORD)timeout_ms);
+  EnterCriticalSection(m);
+
+  if(wait_result == WAIT_TIMEOUT)
+    return CURLE_OPERATION_TIMEDOUT;
+  return (wait_result == WAIT_OBJECT_0) ?
+         CURLE_OK : CURLE_UNRECOVERABLE_POLL;
+}
+
+#else
+
 void Curl_cond_signal(CONDITION_VARIABLE *c)
 {
   WakeConditionVariable(c);
@@ -208,6 +239,7 @@ CURLcode Curl_cond_timedwait(CONDITION_VARIABLE *c, CRITICAL_SECTION *m,
   }
   return CURLE_OK;
 }
+#endif
 #else
 #error neither HAVE_THREADS_POSIX nor _WIN32 defined
 #endif

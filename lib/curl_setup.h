@@ -160,7 +160,7 @@
 #endif /* HAVE_CONFIG_H */
 
 #ifdef _WIN32
-#  if defined(_WIN32_WINNT) && (_WIN32_WINNT < 0x0600)
+#  if defined(_WIN32_WINNT) && (_WIN32_WINNT < 0x0600) && !defined(CURL_WIN98_LEGACY_TARGET)
 #    error The minimum build target is Windows Vista (0x0600)
 #  endif
 

@@ -45,13 +45,20 @@
 #  define curl_mutex_t           CRITICAL_SECTION
 #  define curl_thread_t          HANDLE
 #  define curl_thread_t_null     (HANDLE)0
-#  define Curl_mutex_init(m)     InitializeCriticalSectionEx(m, 0, 1)
+#  ifdef CURL_WIN98_LEGACY_TARGET
+#    define Curl_mutex_init(m)   InitializeCriticalSection(m)
+#    define curl_cond_t          HANDLE
+#    define Curl_cond_init(c)    (*(c) = CreateEvent(NULL, FALSE, FALSE, NULL))
+#    define Curl_cond_destroy(c) CloseHandle(*(c))
+#  else
+#    define Curl_mutex_init(m)   InitializeCriticalSectionEx(m, 0, 1)
+#    define curl_cond_t          CONDITION_VARIABLE
+#    define Curl_cond_init(c)    InitializeConditionVariable(c)
+#    define Curl_cond_destroy(c) (void)(c)
+#  endif
 #  define Curl_mutex_acquire(m)  EnterCriticalSection(m)
 #  define Curl_mutex_release(m)  LeaveCriticalSection(m)
 #  define Curl_mutex_destroy(m)  DeleteCriticalSection(m)
-#  define curl_cond_t            CONDITION_VARIABLE
-#  define Curl_cond_init(c)      InitializeConditionVariable(c)
-#  define Curl_cond_destroy(c)   (void)(c)
 #else
 #error neither HAVE_THREADS_POSIX nor _WIN32 defined
 #endif

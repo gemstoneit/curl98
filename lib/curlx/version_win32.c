@@ -50,6 +50,9 @@ static RTLVERIFYVERSIONINFO_FN s_pRtlVerifyVersionInfo;
 
 void curlx_verify_windows_init(void)
 {
+#ifdef CURL_WIN98_LEGACY_TARGET
+  return;
+#else
 #if defined(__clang__) && __clang_major__ >= 16
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-function-type-strict"
@@ -58,6 +61,7 @@ void curlx_verify_windows_init(void)
     GetProcAddress(GetModuleHandle(TEXT("ntdll")), "RtlVerifyVersionInfo"));
 #if defined(__clang__) && __clang_major__ >= 16
 #pragma clang diagnostic pop
+#endif
 #endif
 }
 #endif /* !CURL_WINDOWS_UWP */
@@ -89,6 +93,7 @@ bool curlx_verify_windows_version(const unsigned int majorVersion,
 {
   bool matched = FALSE;
 
+#ifndef CURL_WIN98_LEGACY_TARGET
 #ifdef CURL_WINDOWS_UWP
   /* We have no way to determine the Windows version from Windows apps,
      so let's assume we are running on the target Windows version. */
@@ -230,6 +235,67 @@ bool curlx_verify_windows_version(const unsigned int majorVersion,
                                      dwTypeMask, cm);
   }
 
+#endif
+
+#else
+  OSVERSIONINFOA osver;
+  DWORD osBuild;
+  DWORD targetPlatform = 0;
+  int compare;
+
+  memset(&osver, 0, sizeof(osver));
+  osver.dwOSVersionInfoSize = sizeof(osver);
+  if(!GetVersionExA(&osver))
+    return FALSE;
+
+  if(platform == PLATFORM_WINDOWS)
+    targetPlatform = VER_PLATFORM_WIN32_WINDOWS;
+  else if(platform == PLATFORM_WINNT)
+    targetPlatform = VER_PLATFORM_WIN32_NT;
+
+  if(platform != PLATFORM_DONT_CARE &&
+     osver.dwPlatformId != targetPlatform)
+    return FALSE;
+
+  osBuild = osver.dwBuildNumber;
+  if(osver.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS)
+    osBuild &= 0xffff;
+
+  if(osver.dwMajorVersion < majorVersion)
+    compare = -1;
+  else if(osver.dwMajorVersion > majorVersion)
+    compare = 1;
+  else if(osver.dwMinorVersion < minorVersion)
+    compare = -1;
+  else if(osver.dwMinorVersion > minorVersion)
+    compare = 1;
+  else if(buildVersion && osBuild < buildVersion)
+    compare = -1;
+  else if(buildVersion && osBuild > buildVersion)
+    compare = 1;
+  else
+    compare = 0;
+
+  switch(condition) {
+  case VERSION_LESS_THAN:
+    matched = compare < 0;
+    break;
+  case VERSION_LESS_THAN_EQUAL:
+    matched = compare <= 0;
+    break;
+  case VERSION_EQUAL:
+    matched = compare == 0;
+    break;
+  case VERSION_GREATER_THAN_EQUAL:
+    matched = compare >= 0;
+    break;
+  case VERSION_GREATER_THAN:
+    matched = compare > 0;
+    break;
+  default:
+    matched = FALSE;
+    break;
+  }
 #endif
 
   return matched;
